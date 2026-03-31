@@ -25,9 +25,9 @@ namespace VgcCollege.Web.Data
             var adminUser = await CreateUser(userManager, "admin@vgc.com", "Admin@123", "Admin");
             var facultyUser1 = await CreateUser(userManager, "faculty1@vgc.com", "Faculty@123", "Faculty");
             var facultyUser2 = await CreateUser(userManager, "faculty2@vgc.com", "Faculty@123", "Faculty");
-            var studentUser1 = await CreateUser(userManager, "student1@vgc.com", "Student@123", "Student");
+            var studentUser1 = await CreateUser(userManager, "luara@vgc.com", "Student@123", "Student");
             var studentUser2 = await CreateUser(userManager, "student2@vgc.com", "Student@123", "Student");
-            var studentUser3 = await CreateUser(userManager, "student3@vgc.com", "Student@123", "Student");
+            var studentUser3 = await CreateUser(userManager, "helder@vgc.com", "Student@123", "Student");
 
             // Seed Branches
             if (!context.Branches.Any())
@@ -61,7 +61,7 @@ namespace VgcCollege.Web.Data
             {
                 var facultyProfiles = new List<FacultyProfile>
                 {
-                    new FacultyProfile { IdentityUserId = facultyUser1!.Id, Name = "Dr. John Murphy", Email = "faculty1@vgc.com", Phone = "0851234567" },
+                    new FacultyProfile { IdentityUserId = facultyUser1!.Id, Name = "Dr. John Rowley", Email = "faculty1@vgc.com", Phone = "0851234567" },
                     new FacultyProfile { IdentityUserId = facultyUser2!.Id, Name = "Dr. Sarah Kelly", Email = "faculty2@vgc.com", Phone = "0857654321" }
                 };
                 context.FacultyProfiles.AddRange(facultyProfiles);
@@ -87,9 +87,9 @@ namespace VgcCollege.Web.Data
             {
                 var studentProfiles = new List<StudentProfile>
                 {
-                    new StudentProfile { IdentityUserId = studentUser1!.Id, Name = "Alice Ryan", Email = "student1@vgc.com", Phone = "0861234567", Address = "10 Main St, Dublin", DateOfBirth = new DateTime(2000, 5, 15), StudentNumber = "VGC001" },
+                    new StudentProfile { IdentityUserId = studentUser1!.Id, Name = "Luara Froes", Email = "luara@vgc.com", Phone = "0861234567", Address = "10 Main St, Dublin", DateOfBirth = new DateTime(2000, 11, 5), StudentNumber = "VGC001" },
                     new StudentProfile { IdentityUserId = studentUser2!.Id, Name = "Bob Walsh", Email = "student2@vgc.com", Phone = "0867654321", Address = "22 High St, Cork", DateOfBirth = new DateTime(1999, 8, 20), StudentNumber = "VGC002" },
-                    new StudentProfile { IdentityUserId = studentUser3!.Id, Name = "Carol Byrne", Email = "student3@vgc.com", Phone = "0869876543", Address = "5 West St, Galway", DateOfBirth = new DateTime(2001, 3, 10), StudentNumber = "VGC003" }
+                    new StudentProfile { IdentityUserId = studentUser3!.Id, Name = "Helder Oliveira", Email = "helder@vgc.com", Phone = "0869876543", Address = "5 West St, Galway", DateOfBirth = new DateTime(1899, 3, 10), StudentNumber = "VGC003" }
                 };
                 context.StudentProfiles.AddRange(studentProfiles);
                 await context.SaveChangesAsync();
@@ -150,7 +150,7 @@ namespace VgcCollege.Web.Data
                     new AssignmentResult { AssignmentId = 2, StudentProfileId = 1, Score = 85, Feedback = "Excellent OOP implementation." },
                     new AssignmentResult { AssignmentId = 3, StudentProfileId = 1, Score = 90, Feedback = "Outstanding analysis." },
                     new AssignmentResult { AssignmentId = 4, StudentProfileId = 2, Score = 72, Feedback = "Solid understanding shown." },
-                    new AssignmentResult { AssignmentId = 5, StudentProfileId = 3, Score = 88, Feedback = "Well structured design." },
+                    new AssignmentResult { AssignmentId = 5, StudentProfileId = 3, Score = 28, Feedback = "I admire the bravery it took to submit this." },
                 };
                 context.AssignmentResults.AddRange(results);
                 await context.SaveChangesAsync();
@@ -178,7 +178,7 @@ namespace VgcCollege.Web.Data
                     new ExamResult { ExamId = 1, StudentProfileId = 1, Score = 82, Grade = "B" },
                     new ExamResult { ExamId = 2, StudentProfileId = 1, Score = 91, Grade = "A" },
                     new ExamResult { ExamId = 3, StudentProfileId = 2, Score = 75, Grade = "B" },
-                    new ExamResult { ExamId = 4, StudentProfileId = 3, Score = 68, Grade = "C" },
+                    new ExamResult { ExamId = 4, StudentProfileId = 3, Score = 38, Grade = "F" },
                 };
                 context.ExamResults.AddRange(examResults);
                 await context.SaveChangesAsync();

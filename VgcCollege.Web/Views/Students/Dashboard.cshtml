@@ -1,0 +1,196 @@
+﻿@{
+    ViewData["Title"] = "Student Dashboard";
+    var student = ViewBag.Student as VgcCollege.Domain.Entities.StudentProfile;
+    var enrolments = ViewBag.Enrolments as List<VgcCollege.Domain.Entities.CourseEnrolment>;
+    var assignmentResults = ViewBag.AssignmentResults as List<VgcCollege.Domain.Entities.AssignmentResult>;
+    var examResults = ViewBag.ExamResults as List<VgcCollege.Domain.Entities.ExamResult>;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-0">Welcome, @student?.Name!</h1>
+        <p class="text-muted">Student Dashboard — @DateTime.Now.ToString("MMMM yyyy")</p>
+    </div>
+    <div class="text-muted small">
+        <i class="bi bi-person-circle me-1"></i> Student ID: @student?.StudentNumber
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Quick Stats -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                    <i class="bi bi-book text-primary fs-3"></i>
+                </div>
+                <div>
+                    <p class="text-muted mb-0 small">Active Courses</p>
+                    <h2 class="mb-0 fw-bold">@(enrolments?.Count ?? 0)</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                    <i class="bi bi-check-circle text-success fs-3"></i>
+                </div>
+                <div>
+                    <p class="text-muted mb-0 small">Assignments Completed</p>
+                    <h2 class="mb-0 fw-bold">@(assignmentResults?.Count ?? 0)</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3">
+                    <i class="bi bi-trophy text-warning fs-3"></i>
+                </div>
+                <div>
+                    <p class="text-muted mb-0 small">Average Score</p>
+                    @{
+                        var avgScore = assignmentResults?.Any() == true
+                        ? assignmentResults.Average(ar => ar.Score)
+                        : 0;
+                    }
+                    <h2 class="mb-0 fw-bold">@avgScore.ToString("F0")%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Courses -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header table-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>My Courses</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Course Name</th>
+                    <th>Branch</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Attendance</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (enrolments?.Any() == true)
+                {
+                    @foreach (var enrolment in enrolments)
+                    {
+                        var attendanceCount = enrolment.AttendanceRecords?.Count(a => a.Present) ?? 0;
+                        var totalAttendance = enrolment.AttendanceRecords?.Count ?? 0;
+                        var attendancePercent = totalAttendance > 0 ? (attendanceCount * 100 / totalAttendance) : 0;
+                        <tr>
+                            <td class="fw-semibold">@enrolment.Course?.Name</td>
+                            <td>@enrolment.Course?.Branch?.Name</td>
+                            <td>@enrolment.Course?.StartDate.ToShortDateString()</td>
+                            <td>@enrolment.Course?.EndDate.ToShortDateString()</td>
+                            <td>
+                                @if (totalAttendance > 0)
+                                {
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress" style="height: 6px; width: 80px;">
+                                            <div class="progress-bar @(attendancePercent >= 75 ? "bg-success" : "bg-warning")"
+                                                 style="width: @attendancePercent%"></div>
+                                        </div>
+                                        <small>@attendanceCount/@totalAttendance</small>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No records</span>
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="CourseDetails" asp-route-id="@enrolment.CourseId"
+                                   class="btn btn-sm btn-outline-primary">
+                                    View Details <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            <i class="bi bi-info-circle me-1"></i> You are not enrolled in any courses yet.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Results -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header table-dark text-white">
+        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Recent Results</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Course</th>
+                    <th>Assessment</th>
+                    <th>Type</th>
+                    <th>Score</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (assignmentResults?.Any() == true || examResults?.Any() == true)
+                {
+                    @foreach (var result in assignmentResults?.Take(5) ?? new List<VgcCollege.Domain.Entities.AssignmentResult>())
+                    {
+                        <tr>
+                            <td>@result.Assignment?.Course?.Name</td>
+                            <td>@result.Assignment?.Title</td>
+                            <td><span class="badge bg-info">Assignment</span></td>
+                            <td>@result.Score / @result.Assignment?.MaxScore</td>
+                            <td>
+                                <span class="badge @(result.Score >= 70 ? "bg-success" : result.Score >= 50 ? "bg-warning" : "bg-danger")">
+                                    @(result.Score >= 70 ? "A" : result.Score >= 60 ? "B" : result.Score >= 50 ? "C" : "D")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var result in examResults?.Take(5) ?? new List<VgcCollege.Domain.Entities.ExamResult>())
+                    {
+                        <tr>
+                            <td>@result.Exam?.Course?.Name</td>
+                            <td>@result.Exam?.Title</td>
+                            <td><span class="badge bg-danger">Exam</span></td>
+                            <td>@result.Score / @result.Exam?.MaxScore</td>
+                            <td>
+                                <span class="badge @(result.Score >= 70 ? "bg-success" : result.Score >= 50 ? "bg-warning" : "bg-danger")">
+                                    @result.Grade
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">
+                            <i class="bi bi-info-circle me-1"></i> No results available yet.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
