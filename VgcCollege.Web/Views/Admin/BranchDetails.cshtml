@@ -1,0 +1,95 @@
+﻿@model VgcCollege.Domain.Entities.Branch
+@{
+    ViewData["Title"] = $"Branch Details - {Model.Name}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="display-6 fw-bold mb-1">@Model.Name</h1>
+        <p class="text-muted">Branch / Campus Details</p>
+    </div>
+    <div>
+        <a asp-action="EditBranch" asp-route-id="@Model.Id" class="btn btn-warning me-2">
+            <i class="bi bi-pencil me-2"></i>Edit Branch
+        </a>
+        <a asp-action="Branches" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Branches
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Branch Information -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Branch Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt>
+                    <dd class="col-sm-8">@Model.Name</dd>
+
+                    <dt class="col-sm-4">Address</dt>
+                    <dd class="col-sm-8">@Model.Address</dd>
+
+                    <dt class="col-sm-4">Total Courses</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-primary">@(Model.Courses?.Count ?? 0) courses</span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courses -->
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>Courses at this Branch</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Students</th>
+                            <th>Faculty</th>
+                            <th></th>
+                    </thead>
+                    <tbody>
+                        @if (Model.Courses?.Any() == true)
+                        {
+                            @foreach (var course in Model.Courses.OrderBy(c => c.Name))
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@course.Name</td>
+                                    <td>@course.StartDate.ToString("dd MMM yyyy")</td>
+                                    <td>@course.EndDate.ToString("dd MMM yyyy")</td>
+                                    <td><span class="badge bg-secondary">@(course.Enrolments?.Count ?? 0)</span></td>
+                                    <td><span class="badge bg-info">@(course.FacultyAssignments?.Count ?? 0)</span></td>
+                                    <td>
+                                        <a asp-action="CourseDetails" asp-route-id="@course.Id"
+                                           class="btn btn-sm btn-outline-primary">
+                                            View <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-info-circle me-1"></i> No courses at this branch.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

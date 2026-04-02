@@ -1,0 +1,127 @@
+﻿@model VgcCollege.Domain.Entities.Course
+@{
+    ViewData["Title"] = $"Course Details - {Model.Name}";
+    var enrolledStudents = ViewBag.EnrolledStudents as List<VgcCollege.Domain.Entities.StudentProfile>;
+    var facultyTeachers = ViewBag.FacultyTeachers as List<VgcCollege.Domain.Entities.FacultyProfile>;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="display-6 fw-bold mb-1">@Model.Name</h1>
+        <p class="text-muted">Course Details</p>
+    </div>
+    <div>
+        <a asp-action="EditCourse" asp-route-id="@Model.Id" class="btn btn-warning me-2">
+            <i class="bi bi-pencil me-2"></i>Edit
+        </a>
+        <a asp-action="Courses" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Course Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Branch</dt>
+                    <dd class="col-sm-7">
+                        <a asp-action="BranchDetails" asp-route-id="@Model.BranchId" class="text-decoration-none">
+                            @Model.Branch?.Name <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    </dd>
+
+                    <dt class="col-sm-5">Start Date</dt>
+                    <dd class="col-sm-7">@Model.StartDate.ToString("dd MMM yyyy")</dd>
+
+                    <dt class="col-sm-5">End Date</dt>
+                    <dd class="col-sm-7">@Model.EndDate.ToString("dd MMM yyyy")</dd>
+
+                    <dt class="col-sm-5">Duration</dt>
+                    <dd class="col-sm-7">@((Model.EndDate - Model.StartDate).Days) days</dd>
+
+                    <dt class="col-sm-5">Enrolled</dt>
+                    <dd class="col-sm-7"><span class="badge bg-primary">@(enrolledStudents?.Count ?? 0) students</span></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-info text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Teaching Faculty</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                @if (facultyTeachers?.Any() == true)
+                {
+                    @foreach (var faculty in facultyTeachers)
+                    {
+                        <a asp-action="FacultyDetails" asp-route-id="@faculty.Id"
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-person-circle me-2"></i>@faculty.Name</span>
+                            <i class="bi bi-chevron-right text-muted"></i>
+                        </a>
+                    }
+                }
+                else
+                {
+                    <div class="list-group-item text-center text-muted py-3">
+                        No faculty assigned to this course.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white py-3">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Enrolled Students</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Student Number</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (enrolledStudents?.Any() == true)
+                        {
+                            @foreach (var student in enrolledStudents)
+                            {
+                                <tr>
+                                    <td><span class="badge bg-secondary">@student.StudentNumber</span></td>
+                                    <td class="fw-semibold">@student.Name</td>
+                                    <td>@student.Email</td>
+                                    <td><span class="badge bg-success">Active</span></td>
+                                    <td>
+                                        <a asp-action="StudentDetails" asp-route-id="@student.Id"
+                                           class="btn btn-sm btn-outline-primary">
+                                            View <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    No students enrolled in this course.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
