@@ -234,7 +234,7 @@ namespace VgcCollege.Web.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     CourseId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Title = table.Column<string>(type: "TEXT", nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
                     MaxScore = table.Column<int>(type: "INTEGER", nullable: false),
                     DueDate = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },

@@ -4,6 +4,32 @@
     var assignedCourses = ViewBag.AssignedCourses as List<VgcCollege.Domain.Entities.Course>;
 }
 
+<style>
+    .course-card {
+        transition: all 0.2s ease;
+        border-radius: 12px;
+    }
+
+        .course-card:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+    .faculty-avatar-lg {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        margin: 0 auto;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="display-6 fw-bold mb-1">@Model.Name</h1>
@@ -22,41 +48,49 @@
 <div class="row g-4">
     <!-- Contact Information -->
     <div class="col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white py-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3 border-0">
                 <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Contact Information</h5>
             </div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4">Name</dt>
-                    <dd class="col-sm-8">@Model.Name</dd>
-
-                    <dt class="col-sm-4">Email</dt>
-                    <dd class="col-sm-8">@Model.Email</dd>
-
-                    <dt class="col-sm-4">Phone</dt>
-                    <dd class="col-sm-8">@Model.Phone</dd>
-                </dl>
+            <div class="card-body text-center">
+                <div class="faculty-avatar-lg mb-3">
+                    @(Model.Name.Split(' ').Last().FirstOrDefault().ToString().ToUpper())
+                </div>
+                <h5 class="fw-bold mb-1">@Model.Name</h5>
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                    <i class="bi bi-envelope text-muted"></i>
+                    <span>@Model.Email</span>
+                </div>
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-telephone text-muted"></i>
+                    <span>@Model.Phone</span>
+                </div>
             </div>
         </div>
 
         <!-- Teaching Summary -->
-        <div class="card shadow-sm mt-4">
-            <div class="card-header bg-info text-white py-3">
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-header bg-info text-white py-3 border-0">
                 <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Teaching Summary</h5>
             </div>
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col-6">
-                        <h3 class="mb-0 text-primary">@(assignedCourses?.Count ?? 0)</h3>
-                        <small class="text-muted">Assigned Courses</small>
+                        <div class="p-3 bg-light rounded-3">
+                            <i class="bi bi-journal-bookmark-fill text-primary fs-2"></i>
+                            <h3 class="mb-0 mt-2">@(assignedCourses?.Count ?? 0)</h3>
+                            <small class="text-muted">Assigned Courses</small>
+                        </div>
                     </div>
                     <div class="col-6">
-                        @{
-                            var totalStudents = assignedCourses?.Sum(c => c.Enrolments?.Count ?? 0) ?? 0;
-                        }
-                        <h3 class="mb-0 text-success">@totalStudents</h3>
-                        <small class="text-muted">Total Students</small>
+                        <div class="p-3 bg-light rounded-3">
+                            <i class="bi bi-people text-success fs-2"></i>
+                            @{
+                                var totalStudents = assignedCourses?.Sum(c => c.Enrolments?.Count ?? 0) ?? 0;
+                            }
+                            <h3 class="mb-0 mt-2">@totalStudents</h3>
+                            <small class="text-muted">Total Students</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -65,52 +99,56 @@
 
     <!-- Assigned Courses -->
     <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white py-3">
-                <h5 class="mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>Assigned Courses</h5>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white py-3 border-0">
+                <h5 class="mb-0"><i class="bi bi-journal-bookmark-fill me-2"></i>Assigned Courses (@(assignedCourses?.Count ?? 0))</h5>
             </div>
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Course Name</th>
-                            <th>Branch</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Students</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (assignedCourses?.Any() == true)
+            <div class="card-body">
+                @if (assignedCourses?.Any() == true)
+                {
+                    <div class="row g-3">
+                        @foreach (var course in assignedCourses)
                         {
-                            @foreach (var course in assignedCourses)
-                            {
-                                <tr>
-                                    <td class="fw-semibold">@course.Name</td>
-                                    <td>@course.Branch?.Name</td>
-                                    <td>@course.StartDate.ToString("dd MMM yyyy")</td>
-                                    <td>@course.EndDate.ToString("dd MMM yyyy")</td>
-                                    <td><span class="badge bg-secondary">@(course.Enrolments?.Count ?? 0)</span></td>
-                                    <td>
-                                        <a asp-action="CourseDetails" asp-route-id="@course.Id"
-                                           class="btn btn-sm btn-outline-primary">
-                                            View <i class="bi bi-arrow-right"></i>
+                            <div class="col-md-6">
+                                <div class="course-card p-3 border rounded-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="fw-bold mb-0">@course.Name</h6>
+                                            <small class="text-muted"><i class="bi bi-building me-1"></i>@course.Branch?.Name</small>
+                                        </div>
+                                        <span class="badge bg-secondary rounded-pill">@(course.Enrolments?.Count ?? 0) students</span>
+                                    </div>
+                                    <div class="d-flex gap-3 mt-2">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <i class="bi bi-calendar-check text-success small"></i>
+                                            <small>@course.StartDate.ToString("dd MMM yyyy")</small>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <i class="bi bi-calendar-x text-danger small"></i>
+                                            <small>@course.EndDate.ToString("dd MMM yyyy")</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a asp-action="CourseDetails" asp-route-id="@course.Id" class="btn btn-sm btn-outline-primary w-100">
+                                            View Course Details <i class="bi bi-arrow-right"></i>
                                         </a>
-                                    </td>
-                                </tr>
-                            }
+                                    </div>
+                                </div>
+                            </div>
                         }
-                        else
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
-                                    <i class="bi bi-info-circle me-1"></i> No courses assigned to this faculty member.
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-journal-bookmark-fill text-muted fs-1"></i>
+                        <h5 class="text-muted mt-2">No courses assigned</h5>
+                        <p class="text-muted small">This faculty member hasn't been assigned to any courses yet.</p>
+                        <a asp-action="EditFaculty" asp-route-id="@Model.Id" class="btn btn-primary btn-sm mt-2">
+                            <i class="bi bi-plus-circle me-1"></i> Assign Course
+                        </a>
+                    </div>
+                }
             </div>
         </div>
     </div>

@@ -41,6 +41,37 @@ namespace VgcCollege.Web.Controllers
             ViewBag.StudentCount = studentCount;
             ViewBag.FacultyCount = facultyCount;
 
+            // Recent Courses (last 3 courses added)
+            ViewBag.RecentCourses = await _context.Courses
+                .Include(c => c.Branch)
+                .OrderByDescending(c => c.StartDate)
+                .Take(3)
+                .ToListAsync();
+
+            // Recent Enrolments (last 5 enrolments)
+            ViewBag.RecentEnrolments = await _context.CourseEnrolments
+                .Include(e => e.StudentProfile)
+                .Include(e => e.Course)
+                .ThenInclude(c => c.Branch)
+                .OrderByDescending(e => e.EnrolDate)
+                .Take(5)
+                .ToListAsync();
+
+            // Recently Released Exams
+            ViewBag.RecentExamReleases = await _context.Exams
+                .Include(e => e.Course)
+                .Include(e => e.Results)
+                .Where(e => e.ResultsReleased == true)
+                .OrderByDescending(e => e.Date)
+                .Take(3)
+                .ToListAsync();
+
+            // Additional Stats for Footer
+            ViewBag.ExamReleaseCount = await _context.Exams.CountAsync(e => e.ResultsReleased == true);
+            ViewBag.PendingExamCount = await _context.Exams.CountAsync(e => e.ResultsReleased == false);
+            ViewBag.ActiveEnrolments = await _context.CourseEnrolments.CountAsync(e => e.Status == "Active");
+            ViewBag.TotalAssignments = await _context.Assignments.CountAsync();
+
             return View();
         }
 
