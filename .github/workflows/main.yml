@@ -3,8 +3,9 @@ name: Test & Publish Coverage (xUnit + ReportGenerator)
 on:
   workflow_dispatch: 
   push:
-    branches: [ "**" ]
+    branches: [ "**" ]    # ← runs on ALL branches
   pull_request:
+    branches: [ "**" ]    # ← runs on PRs to any branch
 
 # Avoid overlapping Pages deployments
 concurrency:
