@@ -1,11 +1,21 @@
-﻿namespace VgcCollege.Domain.Entities
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace VgcCollege.Domain.Entities
 {
     public class Course
     {
         public int Id { get; set; }
+
+        [Required(ErrorMessage = "Course name is required")]
+        [StringLength(100, ErrorMessage = "Course name cannot exceed 100 characters")]
         public string Name { get; set; } = string.Empty;
+
         public int BranchId { get; set; }
+
+        [Required(ErrorMessage = "Start date is required")]
         public DateTime StartDate { get; set; }
+
+        [Required(ErrorMessage = "End date is required")]
         public DateTime EndDate { get; set; }
 
         // Navigation

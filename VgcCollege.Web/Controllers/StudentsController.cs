@@ -103,6 +103,29 @@ namespace VgcCollege.Web.Controllers
 
             return View(enrolments);
         }
+        // GET: Student Attendance
+        public async Task<IActionResult> Attendance()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var student = await _context.StudentProfiles
+                .FirstOrDefaultAsync(s => s.IdentityUserId == user.Id);
+
+            if (student == null) return RedirectToAction("AccessDenied", "Home");
+
+            // Get student's enrolments with attendance records
+            var enrolments = await _context.CourseEnrolments
+                .Include(e => e.Course)
+                    .ThenInclude(c => c.Branch)
+                .Include(e => e.AttendanceRecords)
+                .Where(e => e.StudentProfileId == student.Id)
+                .ToListAsync();
+
+            ViewBag.Enrolments = enrolments;
+
+            return View();
+        }
 
         // GET: Student Results
         public async Task<IActionResult> Results()

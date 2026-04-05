@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using VgcCollege.Domain.Entities;
 using VgcCollege.Web.Data;
+using VgcCollege.Web.ViewModels;
 
 namespace VgcCollege.Web.Controllers
 {
@@ -24,7 +26,7 @@ namespace VgcCollege.Web.Controllers
             _logger = logger;
         }
 
-        // GET: Faculty Dashboard
+        // ==================== DASHBOARD ====================
         public async Task<IActionResult> Dashboard()
         {
             var user = await _userManager.GetUserAsync(User);
@@ -40,37 +42,38 @@ namespace VgcCollege.Web.Controllers
             }
 
             // Get courses this faculty teaches
-            var courses = await _context.FacultyCourseAssignments
+            var myCourses = await _context.FacultyCourseAssignments
                 .Include(fca => fca.Course)
+                    .ThenInclude(c => c.Branch)
                 .Where(fca => fca.FacultyProfileId == faculty.Id)
                 .Select(fca => fca.Course)
                 .ToListAsync();
 
             // Get total students across all their courses
+            var courseIds = myCourses.Select(c => c.Id).ToList();
             var studentIds = await _context.CourseEnrolments
-                .Where(e => courses.Select(c => c.Id).Contains(e.CourseId) && e.Status == "Active")
+                .Where(e => courseIds.Contains(e.CourseId) && e.Status == "Active")
                 .Select(e => e.StudentProfileId)
                 .Distinct()
                 .ToListAsync();
 
-            // Get pending assignments that need grading
+            // Get pending assignments that need grading (score = 0 means not graded)
             var pendingGrading = await _context.AssignmentResults
                 .Include(ar => ar.Assignment)
-                .Where(ar => ar.Assignment.CourseId != null &&
-                            courses.Select(c => c.Id).Contains(ar.Assignment.CourseId) &&
-                            ar.Score == 0 && ar.Feedback == "")
+                .Where(ar => courseIds.Contains(ar.Assignment.CourseId) && ar.Score == 0)
                 .CountAsync();
 
             ViewBag.Faculty = faculty;
-            ViewBag.TotalCourses = courses.Count;
+            ViewBag.MyCourses = myCourses;
+            ViewBag.TotalCourses = myCourses.Count;
             ViewBag.TotalStudents = studentIds.Count;
             ViewBag.PendingGrading = pendingGrading;
 
             return View();
         }
 
-        // GET: My Students
-        public async Task<IActionResult> MyStudents()
+        // ==================== MY STUDENTS ====================
+        public async Task<IActionResult> MyStudents(int? courseId)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToAction("Login", "Account");
@@ -81,34 +84,52 @@ namespace VgcCollege.Web.Controllers
             if (faculty == null) return RedirectToAction("AccessDenied", "Home");
 
             // Get courses this faculty teaches
-            var courseIds = await _context.FacultyCourseAssignments
+            var courses = await _context.FacultyCourseAssignments
+                .Include(fca => fca.Course)
+                    .ThenInclude(c => c.Branch)
                 .Where(fca => fca.FacultyProfileId == faculty.Id)
-                .Select(fca => fca.CourseId)
+                .Select(fca => fca.Course)
                 .ToListAsync();
 
-            // Get all active students enrolled in those courses
-            var students = await _context.CourseEnrolments
-                .Include(e => e.StudentProfile)
-                .Include(e => e.Course)
-                .Where(e => courseIds.Contains(e.CourseId) && e.Status == "Active")
-                .Select(e => e.StudentProfile)
-                .Distinct()
-                .ToListAsync();
+            List<StudentWithAttendanceViewModel> studentsWithAttendance = new List<StudentWithAttendanceViewModel>();
+            Course selectedCourse = null;
 
-            // Get their courses
-            var studentCourses = await _context.CourseEnrolments
-                .Include(e => e.Course)
-                .Where(e => courseIds.Contains(e.CourseId) && e.Status == "Active")
-                .GroupBy(e => e.StudentProfileId)
-                .ToDictionaryAsync(g => g.Key, g => g.Select(e => e.Course).ToList());
+            if (courseId.HasValue && courseId.Value > 0)
+            {
+                selectedCourse = courses.FirstOrDefault(c => c.Id == courseId);
+                if (selectedCourse != null)
+                {
+                    var students = await _context.CourseEnrolments
+                        .Include(e => e.StudentProfile)
+                        .Include(e => e.AttendanceRecords)
+                        .Where(e => e.CourseId == courseId.Value && e.Status == "Active")
+                        .ToListAsync();
 
-            ViewBag.StudentCourses = studentCourses;
+                    foreach (var enrolment in students)
+                    {
+                        var presentCount = enrolment.AttendanceRecords.Count(a => a.Present);
+                        var totalCount = enrolment.AttendanceRecords.Count;
+                        var attendancePercent = totalCount > 0 ? (presentCount * 100 / totalCount) : 0;
+
+                        studentsWithAttendance.Add(new StudentWithAttendanceViewModel
+                        {
+                            Student = enrolment.StudentProfile,
+                            AttendancePercent = attendancePercent,
+                            EnrolmentId = enrolment.Id
+                        });
+                    }
+                }
+            }
+
+            ViewBag.Courses = courses;
+            ViewBag.SelectedCourse = selectedCourse;
+            ViewBag.StudentsWithAttendance = studentsWithAttendance;
             ViewBag.Faculty = faculty;
 
-            return View(students);
+            return View();
         }
 
-        // GET: Student Details (with grades)
+        // ==================== STUDENT DETAILS ====================
         public async Task<IActionResult> StudentDetails(int id)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -143,20 +164,21 @@ namespace VgcCollege.Web.Controllers
             // Get student's enrolments
             var enrolments = await _context.CourseEnrolments
                 .Include(e => e.Course)
+                    .ThenInclude(c => c.Branch)
                 .Where(e => e.StudentProfileId == id && e.Status == "Active")
                 .ToListAsync();
 
             // Get assignment results
             var assignmentResults = await _context.AssignmentResults
                 .Include(ar => ar.Assignment)
-                .ThenInclude(a => a.Course)
+                    .ThenInclude(a => a.Course)
                 .Where(ar => ar.StudentProfileId == id)
                 .ToListAsync();
 
             // Get exam results
             var examResults = await _context.ExamResults
                 .Include(er => er.Exam)
-                .ThenInclude(e => e.Course)
+                    .ThenInclude(e => e.Course)
                 .Where(er => er.StudentProfileId == id)
                 .ToListAsync();
 
@@ -174,7 +196,33 @@ namespace VgcCollege.Web.Controllers
             return View(student);
         }
 
-        // GET: Enter/Edit Grades
+        // ==================== ASSIGNMENTS (Gradebook) ====================
+        public async Task<IActionResult> Assignments()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var faculty = await _context.FacultyProfiles
+                .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+            if (faculty == null) return RedirectToAction("AccessDenied", "Home");
+
+            var courseIds = await _context.FacultyCourseAssignments
+                .Where(fca => fca.FacultyProfileId == faculty.Id)
+                .Select(fca => fca.CourseId)
+                .ToListAsync();
+
+            var assignments = await _context.Assignments
+                .Include(a => a.Course)
+                .ThenInclude(c => c.Branch)
+                .Where(a => courseIds.Contains(a.CourseId))
+                .OrderByDescending(a => a.DueDate)
+                .ToListAsync();
+
+            return View(assignments);
+        }
+
+        // ==================== ENTER GRADES ====================
         public async Task<IActionResult> EnterGrades(int courseId)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -198,6 +246,7 @@ namespace VgcCollege.Web.Controllers
             var course = await _context.Courses
                 .Include(c => c.Assignments)
                 .Include(c => c.Exams)
+                .Include(c => c.Branch)
                 .FirstOrDefaultAsync(c => c.Id == courseId);
 
             if (course == null) return NotFound();
@@ -208,13 +257,24 @@ namespace VgcCollege.Web.Controllers
                 .Select(e => e.StudentProfile)
                 .ToListAsync();
 
+            // Load assignment results and exam results for each student
+            var assignmentResults = await _context.AssignmentResults
+                .Where(ar => course.Assignments.Select(a => a.Id).Contains(ar.AssignmentId))
+                .ToListAsync();
+
+            var examResults = await _context.ExamResults
+                .Where(er => course.Exams.Select(e => e.Id).Contains(er.ExamId))
+                .ToListAsync();
+
             ViewBag.Course = course;
             ViewBag.Students = students;
+            ViewBag.AssignmentResults = assignmentResults;
+            ViewBag.ExamResults = examResults;
 
             return View();
         }
 
-        // POST: Save Assignment Grade
+        // ==================== SAVE ASSIGNMENT GRADE ====================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveAssignmentGrade(int assignmentId, int studentId, int score, string feedback)
@@ -277,7 +337,7 @@ namespace VgcCollege.Web.Controllers
             }
         }
 
-        // POST: Save Exam Grade
+        // ==================== SAVE EXAM GRADE ====================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveExamGrade(int examId, int studentId, int score, string grade)
@@ -340,8 +400,8 @@ namespace VgcCollege.Web.Controllers
             }
         }
 
-        // GET: Assignments list
-        public async Task<IActionResult> Assignments()
+        // ==================== MARK ATTENDANCE ====================
+        public async Task<IActionResult> MarkAttendance(int id, int week = 1)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToAction("Login", "Account");
@@ -351,18 +411,174 @@ namespace VgcCollege.Web.Controllers
 
             if (faculty == null) return RedirectToAction("AccessDenied", "Home");
 
-            var courseIds = await _context.FacultyCourseAssignments
+            var course = await _context.Courses
+                .Include(c => c.Branch)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (course == null) return NotFound();
+
+            // Verify faculty teaches this course
+            var teachesCourse = await _context.FacultyCourseAssignments
+                .AnyAsync(fca => fca.FacultyProfileId == faculty.Id && fca.CourseId == id);
+
+            if (!teachesCourse) return RedirectToAction("AccessDenied", "Home");
+
+            // Get students enrolled in this course with their attendance records
+            var enrolments = await _context.CourseEnrolments
+                .Include(e => e.StudentProfile)
+                .Include(e => e.AttendanceRecords)
+                .Where(e => e.CourseId == id && e.Status == "Active")
+                .ToListAsync();
+
+            ViewBag.Enrolments = enrolments;
+            ViewBag.CurrentWeek = week;
+            ViewBag.Course = course;
+
+            return View();
+        }
+
+        // ==================== SAVE ATTENDANCE ====================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveAttendance(int courseId, int weekNumber, IFormCollection form)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                if (user == null) return Unauthorized();
+
+                var faculty = await _context.FacultyProfiles
+                    .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+                if (faculty == null) return Unauthorized();
+
+                // Verify faculty teaches this course
+                var teachesCourse = await _context.FacultyCourseAssignments
+                    .AnyAsync(fca => fca.FacultyProfileId == faculty.Id && fca.CourseId == courseId);
+
+                if (!teachesCourse) return Unauthorized();
+
+                // Get all students enrolled in this course
+                var enrolments = await _context.CourseEnrolments
+                    .Where(e => e.CourseId == courseId && e.Status == "Active")
+                    .ToListAsync();
+
+                foreach (var enrolment in enrolments)
+                {
+                    var isPresent = form[$"attendance_{enrolment.StudentProfileId}"] == "true";
+
+                    // Check if attendance record already exists
+                    var existingRecord = await _context.AttendanceRecords
+                        .FirstOrDefaultAsync(a => a.CourseEnrolmentId == enrolment.Id && a.WeekNumber == weekNumber);
+
+                    if (existingRecord != null)
+                    {
+                        existingRecord.Present = isPresent;
+                        _context.Update(existingRecord);
+                    }
+                    else
+                    {
+                        var newRecord = new AttendanceRecord
+                        {
+                            CourseEnrolmentId = enrolment.Id,
+                            WeekNumber = weekNumber,
+                            Date = DateTime.Today,
+                            Present = isPresent
+                        };
+                        _context.AttendanceRecords.Add(newRecord);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Attendance saved for course {CourseId}, week {WeekNumber} by {User}",
+                    courseId, weekNumber, User.Identity?.Name);
+
+                TempData["Success"] = $"Attendance for Week {weekNumber} saved successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving attendance for course {CourseId}, week {WeekNumber}", courseId, weekNumber);
+                TempData["Error"] = "An error occurred while saving attendance.";
+            }
+
+            return RedirectToAction(nameof(MarkAttendance), new { id = courseId, week = weekNumber });
+        }
+    
+    // ==================== CREATE ASSIGNMENT ====================
+// GET: Create Assignment
+public async Task<IActionResult> CreateAssignment()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var faculty = await _context.FacultyProfiles
+                .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+            if (faculty == null) return RedirectToAction("AccessDenied", "Home");
+
+            // Get courses this faculty teaches
+            var myCourses = await _context.FacultyCourseAssignments
+                .Include(fca => fca.Course)
                 .Where(fca => fca.FacultyProfileId == faculty.Id)
-                .Select(fca => fca.CourseId)
+                .Select(fca => fca.Course)
                 .ToListAsync();
 
-            var assignments = await _context.Assignments
-                .Include(a => a.Course)
-                .Where(a => courseIds.Contains(a.CourseId))
-                .OrderByDescending(a => a.DueDate)
-                .ToListAsync();
+            ViewBag.MyCourses = new SelectList(myCourses, "Id", "Name");
 
-            return View(assignments);
+            return View();
+        }
+
+        // POST: Create Assignment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateAssignment(Assignment assignment)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var faculty = await _context.FacultyProfiles
+                .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+            if (faculty == null) return RedirectToAction("AccessDenied", "Home");
+
+            // Verify faculty teaches this course
+            var teachesCourse = await _context.FacultyCourseAssignments
+                .AnyAsync(fca => fca.FacultyProfileId == faculty.Id && fca.CourseId == assignment.CourseId);
+
+            if (!teachesCourse)
+            {
+                TempData["Error"] = "You can only create assignments for courses you teach.";
+                return RedirectToAction("Assignments");
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Assignments.Add(assignment);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Assignment created: {Title} for course {CourseId} by {User}",
+                        assignment.Title, assignment.CourseId, User.Identity?.Name);
+                    TempData["Success"] = $"Assignment '{assignment.Title}' created successfully.";
+                    return RedirectToAction("Assignments");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating assignment");
+                    ModelState.AddModelError("", "An error occurred while creating the assignment.");
+                }
+            }
+
+            var myCourses = await _context.FacultyCourseAssignments
+                .Include(fca => fca.Course)
+                .Where(fca => fca.FacultyProfileId == faculty.Id)
+                .Select(fca => fca.Course)
+                .ToListAsync();
+            ViewBag.MyCourses = new SelectList(myCourses, "Id", "Name", assignment.CourseId);
+
+            return View(assignment);
         }
     }
+
 }

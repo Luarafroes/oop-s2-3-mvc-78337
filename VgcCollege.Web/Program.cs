@@ -6,6 +6,7 @@ using VgcCollege.Web.Data;
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .WriteTo.Seq("http://localhost:5341")
     .Enrich.FromLogContext()
     .Enrich.WithMachineName()
     .Enrich.WithEnvironmentName()
@@ -17,7 +18,7 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Serilog
+    // Serilog with Seq
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
@@ -26,14 +27,15 @@ try
         .Enrich.WithEnvironmentName()
         .Enrich.WithProperty("Application", "VgcCollege")
         .WriteTo.Console()
-        .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day));
+        .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+        .WriteTo.Seq("http://localhost:5341"));
 
     // DbContext
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlite(builder.Configuration
             .GetConnectionString("DefaultConnection")));
 
-    // Identity
+    // Identity (LoginPath is configured in ApplicationCookie, not IdentityOptions)
     builder.Services.AddDefaultIdentity<IdentityUser>(options =>
     {
         options.SignIn.RequireConfirmedAccount = false;
@@ -41,10 +43,14 @@ try
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
-    // Cookie settings - Access Denied page
+    // Configure cookie settings for login path
     builder.Services.ConfigureApplicationCookie(options =>
     {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
         options.AccessDeniedPath = "/Home/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.SlidingExpiration = true;
     });
 
     builder.Services.AddControllersWithViews();
