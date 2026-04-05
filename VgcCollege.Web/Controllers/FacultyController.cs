@@ -504,5 +504,81 @@ namespace VgcCollege.Web.Controllers
 
             return RedirectToAction(nameof(MarkAttendance), new { id = courseId, week = weekNumber });
         }
+    
+    // ==================== CREATE ASSIGNMENT ====================
+// GET: Create Assignment
+public async Task<IActionResult> CreateAssignment()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var faculty = await _context.FacultyProfiles
+                .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+            if (faculty == null) return RedirectToAction("AccessDenied", "Home");
+
+            // Get courses this faculty teaches
+            var myCourses = await _context.FacultyCourseAssignments
+                .Include(fca => fca.Course)
+                .Where(fca => fca.FacultyProfileId == faculty.Id)
+                .Select(fca => fca.Course)
+                .ToListAsync();
+
+            ViewBag.MyCourses = new SelectList(myCourses, "Id", "Name");
+
+            return View();
+        }
+
+        // POST: Create Assignment
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateAssignment(Assignment assignment)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var faculty = await _context.FacultyProfiles
+                .FirstOrDefaultAsync(f => f.IdentityUserId == user.Id);
+
+            if (faculty == null) return RedirectToAction("AccessDenied", "Home");
+
+            // Verify faculty teaches this course
+            var teachesCourse = await _context.FacultyCourseAssignments
+                .AnyAsync(fca => fca.FacultyProfileId == faculty.Id && fca.CourseId == assignment.CourseId);
+
+            if (!teachesCourse)
+            {
+                TempData["Error"] = "You can only create assignments for courses you teach.";
+                return RedirectToAction("Assignments");
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Assignments.Add(assignment);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Assignment created: {Title} for course {CourseId} by {User}",
+                        assignment.Title, assignment.CourseId, User.Identity?.Name);
+                    TempData["Success"] = $"Assignment '{assignment.Title}' created successfully.";
+                    return RedirectToAction("Assignments");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating assignment");
+                    ModelState.AddModelError("", "An error occurred while creating the assignment.");
+                }
+            }
+
+            var myCourses = await _context.FacultyCourseAssignments
+                .Include(fca => fca.Course)
+                .Where(fca => fca.FacultyProfileId == faculty.Id)
+                .Select(fca => fca.Course)
+                .ToListAsync();
+            ViewBag.MyCourses = new SelectList(myCourses, "Id", "Name", assignment.CourseId);
+
+            return View(assignment);
+        }
     }
+
 }

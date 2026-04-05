@@ -11,7 +11,7 @@ using VgcCollege.Web.Data;
 namespace VgcCollege.Web.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260401230552_InitialCreate")]
+    [Migration("20260405115747_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -328,6 +328,7 @@ namespace VgcCollege.Web.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("StartDate")

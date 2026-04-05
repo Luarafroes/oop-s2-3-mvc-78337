@@ -325,6 +325,7 @@ namespace VgcCollege.Web.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("StartDate")
